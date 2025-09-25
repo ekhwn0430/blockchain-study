@@ -1,9 +1,16 @@
 ## Layer 1
-- POW (Proof of Work)
+- PoW (Proof of Work)
   - bitcoin
   - ethereum
-- POS (Proof of staking)
+- PoS (Proof of Staking)
   - near
+- dPoS (delegated Proof of Stake)
+-   EOS
+-   Steem
+- PBFT (Practical Byzantine Fault Tolerance)
+-   Ripple
+- PoH (Proof of History)
+-   Solana
 
 ## Over Layer 2
 - Ethereum Network
