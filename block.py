@@ -19,6 +19,7 @@ problem_difficulty = 2
 start_nonce = random.choice(string.ascii_letters)
 
 i = 0
+# repeat until nonce_result[0] to nonce_result[problem_difficulty-1] become problem_word
 while True:
     nonce = start_nonce + str(i)
     nonce_result = sha256((nonce).encode()).hexdigest()
