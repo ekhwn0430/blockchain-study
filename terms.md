@@ -5,12 +5,12 @@
 - PoS (Proof of Staking)
   - near
 - dPoS (delegated Proof of Stake)
--   EOS
--   Steem
+  - EOS
+  - Steem
 - PBFT (Practical Byzantine Fault Tolerance)
--   Ripple
+  - Ripple
 - PoH (Proof of History)
--   Solana
+  - Solana
 
 ## Over Layer 2
 - Ethereum Network
