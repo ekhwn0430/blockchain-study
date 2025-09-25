@@ -3,4 +3,4 @@
   - bitcoin
   - ethereum
 - POS (Proof of staking)
-  -
+  - near
