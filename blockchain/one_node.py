@@ -113,3 +113,88 @@ class Blockchain(object):
         
         return True
 
+
+# 노드 기본 정보 설정
+# 운영할 노드의 ip 주소와 포트 주소를 선언한다.
+# 노드의 key 값(node_identifier, 노드 ip + 포트 번호)을 생성하고
+# 노드의 채굴 결과 발생하는 수익을 보낼 지갑의 주소(mine_owner)와 채굴 보상값(mine_profit)을 선언한다.
+blockchain = Blockchain()
+my_ip = '0.0.0.0'
+my_port = '5000'
+node_identifier = 'node_' + my_port
+mine_owner = 'master'
+mine_profit = 0.1
+
+
+# 블록 정보 호출
+# 임의의 사용자가 블록체인 정보 호출 시 블록체인 내의 블록의 길이와 블록의 모든 정보를 json 양식으로 리턴한다.
+@app.route('/chain', methods=['GET'])
+def full_chain():
+    print("chain info requested")
+    response = {
+        'chain' : blockchain.chain, 
+        'length' : len(blockchain.chain)
+    }
+    return jsonify(response), 200
+
+
+# 신규 거래 추가
+# 거래가 발생할 경우 해당 거래 내역은 json 형식으로 요청되며
+# 요청 사항 내 거래 내역의 3가지 요소(발신자, 수신자, 보내는 금액)가 있는지 확인하고 없을 경우 400 에러를 배출한다.
+# 에러가 없을 경우에는 블록체인 객체의 new_transaction 함수를 활용하여 블록 거래 내에 신규 거래 내역을 추가한다.
+@app.route('/transactions/new', methods=['POST'])
+def new_transaction():
+    values = request.get_json()
+    print("transactions_new! : ", values)
+    required = ['sender', 'recipient', 'amount']
+    
+    if not all(k in values for k in required):
+        return 'missing values', 400
+    
+    index = blockchain.new_transaction(
+        values['sender'],
+        values['recipient'],
+        values['amount']
+    )
+    response = {'message' : 'Transactions will be added to Block {%s}' % index}
+    
+    return jsonify(response), 201
+
+
+# 채굴
+# 채굴이 시작되면 마지막 블록 내의 nonce 값을 블록 객체의 pow에 넣은 뒤 작업을 시작한다.
+# 작업이 완료되고 작업 증명을 위한 nonce 값이 생성되면 mine_owner로부터 노드 운영자에게 채굴 보상이 주어지고
+# 최종적으로 전 블록의 해시값을 포함하여 블록 객체의 new_block 함수로 블록이 생성된다.
+@app.route('/mine', methods=['GET'])
+def mine():
+    print("MINING STARTED")
+    last_block = blockchain.last_block
+    last_proof = last_block['nonce']
+    proof = blockchain.pow(last_proof)
+    
+    blockchain.new_transaction(
+        sender = mine_owner,
+        recipient = node_identifier,
+        amount = mine_profit   # coinbase transaction
+    )
+    
+    previous_hash = blockchain.hash(last_block)
+    block = blockchain.new_block(proof, previous_hash)
+    print("MINING FINISHED")
+    
+    response = {
+        'message' : 'new block found',
+        'index' : block['index'],
+        'transactions' : block['transactions'],
+        'nonce' : block['nonce'],
+        'previous_hash' : block['previous_hash']
+    }
+    
+    return jsonify(response), 200
+
+
+# 노드 운영 시작
+app = Flask(__name__)
+if __name__ == '__main__':
+    app.run(host=my_ip, port=my_port)
+
