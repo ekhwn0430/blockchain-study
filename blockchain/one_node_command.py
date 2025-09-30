@@ -83,5 +83,19 @@ df_tx['timestamp'] = tx_time_l
 df_tx['sender'] = tx_sender_l
 df_tx['recipient'] = tx_reciv_l
 df_tx['amount'] = tx_amount_l
+print(df_tx)
 
-df_tx
+
+# 지갑별 잔액 보기
+df_sended = pd.DataFrame(df_tx.groupby('sender')['amount'].sum()).reset_index()
+df_sended.columns = ['user', 'sended_amount']
+df_received = pd.DataFrame(df_tx.groupby('recipient')['amount'].sum()).reset_index()
+df_received.columns = ['user', 'received_amount']
+
+print(df_sended)
+print(df_received)
+
+df_status = pd.merge(df_received, df_sended, on='user', how='outer').fillna(0)
+df_status['balance'] = df_status['received_amount'] - df_status['sended_amount']
+
+print(df_status)
