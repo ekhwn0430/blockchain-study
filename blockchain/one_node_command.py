@@ -59,3 +59,29 @@ requests.post(
     "http://localhost:5000/transactions/new",
     headers=headers,
     data=json.dumps(data)).content
+
+
+# 거래 내역이 증가함에 따라 json 방식으로 확인이 어렵기 때문에 pandas를 활용하여 거래 내역을 Table로 확인한다.
+status_json = json.loads(res.text)
+status_json['chain']
+tx_amount_l = []
+tx_sender_l = []
+tx_reciv_l = []
+tx_time_l = []
+
+for chain_index in range(len(status_json['chain'])):
+    chain_tx = status_json['chain'][chain_index]['transactions']
+
+    for each_tx in range(len(chain_tx)):
+        tx_amount_l.append(chain_tx[each_tx]['amount'])
+        tx_sender_l.append(chain_tx[each_tx]['sender'])
+        tx_reciv_l.append(chain_tx[each_tx]['recipient'])
+        tx_time_l.append(chain_tx[each_tx]['timestamp'])
+
+df_tx = pd.DataFrame()
+df_tx['timestamp'] = tx_time_l
+df_tx['sender'] = tx_sender_l
+df_tx['recipient'] = tx_reciv_l
+df_tx['amount'] = tx_amount_l
+
+df_tx
