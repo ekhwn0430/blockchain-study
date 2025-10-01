@@ -12,8 +12,14 @@ app = Flask(__name__, template_folder = os.getcwd())
 
 
 # login 기능 구현
+# 로그인 페이지에서 로그인 버튼을 클릭하면 POST 방식을 통하여 백앤드에 접속하게 된다.
+# post임을 감지하여 입력된 지갑 아이디가 input_value에 저장된다.
+# 블록체인의 블록 정보 조회 URL에 request의 GET 방식으로 접속하여 정보를 받아 오며
+# 이후 pandas를 통해 현 계정별 잔액을 조회하고 로그인한 계정이 데이터프레임의 user 값과 동일할 경우
+# 해당 계정의 잔고 값과 함께 로그인이 성공된 wallet.html 페이지로 렌더링해준다.
 @app.route('/', methods=['GET', 'POST'])
 def login():
+    # POST 감지
     if request.method == 'POST':
         print("Login 버튼을 누름")
         input_value = request.form.to_dict(flat=False) ['wallet_id'][0]
@@ -73,6 +79,10 @@ def login():
 
 
 # 지갑 기능 구현
+# 로그인이 성공한 경우 로그인한 사용자의 지갑 ID, 잔고를 리턴해준다.(70 ~ 74)
+# 사용자가 보내고자 하는 USER-ID와 보낼 금액을 입력한 뒤 보내기 버튼을 클릭하면 POST 방식으로 백앤드의 wallet에 접속하게 된다.
+# POST임을 감지한뒤 송금될 금액, 송금 받을 지갑 아이다, 송금하는 지갑 아이디가 send_value, send_target, send_from에 저장된다.
+# 보내는 금액이 정상적일 경우 블록체인의 송금 URL에 request의 POST 방식으로 송금 데이터를 업데이트해준다.
 @app.route('/wallet', methods=['GET', 'POST'])
 def wallet():
     if request.method == 'POST':
