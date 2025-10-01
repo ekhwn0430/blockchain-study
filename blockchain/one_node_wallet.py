@@ -7,6 +7,11 @@ import json
 import os
 
 
+# Flask app 선언
+app = Flask(__name__, template_folder = os.getcwd())
+
+
+# login 기능 구현
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -54,15 +59,50 @@ def login():
         
         
         # 결과값 랜더링
-        if (df_status['user'] == input_value['wallet_id'][0]).sum() == 1:
+        if (df_status['user'] == input_value).sum() == 1:
             print("로그인 성공")
             return  render_template(
                 "wallet.html",
-                wallet_id = input_value['wallet_id'][0],
-                status[df_status['user'] == df_status['user'].iloc[0]['balance'].iloc[0]]
+                wallet_id = input_value,
+                status[df_status['user'] == input_value]['balance'].iloc[0]
                 )
         else:
             return "잘못된 지갑주소입니다."
     
     return render_template('login.html')
 
+
+# 지갑 기능 구현
+@app.route('/wallet', methods=['GET', 'POST'])
+def wallet():
+    if request.method == 'POST':
+        send_value = int(request.form.to_dict(flat=False)['send_value'][0])
+        send_target = request.form.to_dict(flat=False)['send_target'][0]
+        send_from = request.form.to_dict(flat=False)['send_from'][0]
+        print("Login Wallet ID :", send_from)
+    
+        if send_value > 0:
+            print("Send Amount :", send_value)
+            # transaction 입력
+            headers = {'Content-Type' : 'application/json; charset=utf-8'}
+            data = {
+                "sender" : send_from,
+                "recipient" : send_target,
+                "amount" : send_value
+            }
+            requests.post(
+                "http://localhost:5000/transactions/new",
+                headers = headers,
+                data = json.dumps(data)
+                )
+            
+            return "전송 완료!"
+            
+        else:
+            return "0 pyBTC 이상 보내주세요"
+        
+    return render_template('wallet.html')
+
+
+# 지갑 사이트 실행
+app.run(port=8001)
