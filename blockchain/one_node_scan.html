@@ -9,7 +9,7 @@
             <th>transactions</th>
         </tr>
         
-        {%for i in range(0, chain_len)%}
+        {%for i in range(0, block_len)%}
         <tr>
             <td>{{df_scan.loc[i, 'timestamp']}}</td>
             <td>{{df_scan.loc[i, 'previous_hash']}}</td>
