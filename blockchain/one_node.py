@@ -157,6 +157,25 @@ def new_transaction():
         values['amount']
     )
     response = {'message' : 'Transactions will be added to Block {%s}' % index}
+
+    # 노드 연결을 위해 추가되는 부분
+    # 본 노드에 받은 거래 내역 정보를 다른 노드들에 다같이 업데이트해 준다.
+    # 신규로 추가된 경우 type이라는 정보가 없다. 해당 내용은 전파가 필요하다.
+    if "type" not in values:
+        for node in blockchain.nodes:
+            headers {'Content-Type' : 'application/json; charset = utf-8'}
+            data = {
+                'sender' : values['sender'],
+                'recipient' : values['recipient'],
+                'amount' : values['amount'],
+                'type' : 'sharing'   # 전파이기에 sharing이라는 type이 꼭 필요함
+            }
+            requsets.post(
+                "http://" + node + "/transactions/new",
+                headers=headers,
+                data=json.dumps(data)
+                )
+            print("share transaction to >>   ", "http://" + node)
     
     return jsonify(response), 201
 
