@@ -119,7 +119,7 @@ class Blockchain(object):
 # 노드의 key 값(node_identifier, 노드 ip + 포트 번호)을 생성하고
 # 노드의 채굴 결과 발생하는 수익을 보낼 지갑의 주소(mine_owner)와 채굴 보상값(mine_profit)을 선언한다.
 blockchain = Blockchain()
-my_ip = '0.0.0.0'
+my_ip = 'localhost'
 my_port = '5000'
 node_identifier = 'node_' + my_port
 mine_owner = 'master'
