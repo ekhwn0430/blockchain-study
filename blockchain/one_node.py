@@ -338,6 +338,66 @@ def mine():
     return jsonify(response), 200
 
 
+# 채굴 결과 검증 함수
+# 다른 노드에서 작업 증명(채굴)이 완료되었다고 전파되었을 때, 바로 그 내용을 받아들이면 안 된다.
+#
+# 1. 다른 노드가 완료한 작업이 알맞은 작업이었는지, 다른 노드의 과거 데이터에 조작이 없었는지 검증하여야 한다.
+#    새로운 블록 생성 알림에 제공된 해시와 내 노드에 저장되었던 과거 해시값에 이상이 없는지 비교해야 한다.
+# 2. 작업 증명의 결과로 산출된 nonce 값으로 작업 증명의 조건에 만족했는지 직접 확인해야 한다.
+#
+# 위 2가지 내용을 확인한 뒤 이상이 없을 경우 정상 작업 증명이 되었음을 인정하고 내 블록에도 다음 블록을 연결한다.
+# 이상이 있으면 검증 결과가 잘못되었음을 전파하고 채굴 활동을 지속한다.
+@app.route('/nodes/resolve', methods=['GET'])
+def resolve():
+    requester_node_info = request.get_json()
+    required = ['miner_node']   # 해당 데이터가 존재해야한다.
+    
+    # 데이터가 없으면 에러를 띄운다.
+    if not all(k in requester_node_info for k in required):
+        return 'missing values', 400
+    
+    # 그전에 우선 previous에서 바뀐 것이 있는지 점검한다.
+    my_previous_hash = blockchain.last_block['previous_hash']
+    my_previous_hash
+    
+    last_proof = blockchain.last_block['nonce']
+    headers {'Content-Type' : 'application/json; charset = utf-8'}
+    miner_chain_info = requests.get(
+        requester_node_info['miner_node'] + "/chain",
+        headers = headers
+        )
+    
+    # 초기 블록은 과거 이력 변조 내역을 확인할 필요가 없다
+    print("다른 노드에서 요청이 온 블록, 검증 시작")
+    new_block_previous_hash = json.loads(miner_chain_info.text)['chain'][-2]['previous_hash']
+    # 내 노드의 전 해시와 새로 만든 노드의 전 해시가 같은 경우 -> 정상
+    if my_previous_hash == new_block_previous_hash and \
+    sha256(str(last_proof + int(requester_node_info['new_nonce'])).encode()).hexdigst()[:4] == "0000":
+        print("다른 노드에서 요청이 온 블록, 검증 결과 정상")
+        
+        # True / False 반환 True면 내 블록의 길이가 짧아 대체되어야 한다.
+        replaced = blockchain.resolve_conflicts()
+        if replaced == True:
+            print("REPLACED length :", len(blockchain.chain))
+            response = {
+                'message' : 'Our chain was replaced >> ' + my_ip + ':' + my_port,
+                'new_chain' : blockchain.chain
+            }
+        else:
+            response = {
+                'message' : 'Our chain is authoritative',
+                'chain' : blockchain.chain
+            }
+    else:
+        print("다른 노드에서 요청이 온 블록, 검증 결과 이상 발생")
+        response = {
+                'message' : 'Our chain is authoritative >> ' + my_ip + ':' + my_port,
+                'chain' : blockchain.chain
+            }
+    
+    return jsonify(response), 200
+
+
 # 노드 운영 시작
 app = Flask(__name__)
 if __name__ == '__main__':
