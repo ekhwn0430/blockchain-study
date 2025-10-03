@@ -5,10 +5,12 @@ import pandas as pd
 import requests
 import json
 import os
+import random
 
 
 # Flask app 선언
 app = Flask(__name__, template_folder = os.getcwd())
+node_port_list = ['5000', '5001', '5002']
 
 
 # login 기능 구현
@@ -24,10 +26,15 @@ def login():
         print("Login 버튼을 누름")
         input_value = request.form.to_dict(flat=False) ['wallet_id'][0]
         print("Login 지갑주소 : ", input_value)
+
+        # 노드 주소 랜덤 변경
+        node_id = random.choice(node_port_list)
         
         # 기존 user 정보 확인
         headers = {'Content-Type' : 'application/json; charset=utf-8'}
-        res = requests.get("http://localhost:5000/chain", headers=headers)
+        # 선정된 노드 주소로 데이터 요청
+        res = requests.get("http://localhost:" + node_id + "/chain", headers=headers)
+        print("*" * 8)
         status_json = json.loads(res.text)
         status_json['chain']
         tx_amount_l = []
@@ -51,7 +58,6 @@ def login():
         df_tx['sender'] = tx_sender_l
         df_tx['recipient'] = tx_reciv_l
         df_tx['amount'] = tx_amount_l
-        df_tx
         
         
         # pyBTC 잔고 현황 정리 (df_status)
@@ -61,7 +67,6 @@ def login():
         df_received.columns = ['user', 'received_amount']
         df_status = pd.merge(df_received, df_sended, on='user', how='outer').fillna(0)
         df_status['balance'] = df_status['received_amount'] - df_status['sended_amount']
-        df_status
         
         
         # 결과값 랜더링
@@ -89,7 +94,7 @@ def wallet():
         send_value = int(request.form.to_dict(flat=False)['send_value'][0])
         send_target = request.form.to_dict(flat=False)['send_target'][0]
         send_from = request.form.to_dict(flat=False)['send_from'][0]
-        print("Login Wallet ID :", send_from)
+        # print("Login Wallet ID :", send_from)
     
         if send_value > 0:
             print("Send Amount :", send_value)
@@ -101,7 +106,7 @@ def wallet():
                 "amount" : send_value
             }
             requests.post(
-                "http://localhost:5000/transactions/new",
+                "http://localhost:" + node_id + "/transactions/new",
                 headers = headers,
                 data = json.dumps(data)
                 )
