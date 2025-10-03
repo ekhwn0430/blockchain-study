@@ -1,4 +1,5 @@
 from hashlib import sha256
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from time import time
 import json
@@ -112,6 +113,51 @@ class Blockchain(object):
             current_index += 1
         
         return True
+    
+
+    # **여러 노드 운영을 위한 함수 2개 추가**
+    # 노드 리스트에 다른 노드 추가
+    # nodes라는 set에 다른 노드 추가
+    def register_node(self, address):
+        parsed_url = urlparse(address)
+        self.nodes.add(parsed_url.netloc)
+    
+
+    # 다른 블록과 데이터를 비교하며 최신 데이터로 업데이트
+    # 노드가 여러 개 존재할 경우 노드 간의 데이터가 상이할 수 있다.
+    # 이런 경우 이웃 노드들의 체인 정보를 받아온 뒤 해당 노드의 블록 길이와 내 노드의 블록 길이를 비교하여
+    # 더 긴 블록을 유효한 블록으로 간주하고 데이터를 업데이트해 주고 True를 반환한다.
+    # 내 노드의 데이터가 이미 최신인 경우에는 별도의 작업을 하지 않고 False를 반환한다.
+    def resolve_conflicts(self):
+        # 구동되는 노드들을 저장
+        neighbours = self.nodes
+        new_block = None
+        # 내 블록의 길이 저장
+        max_length = len(self.chain)
+        for node in neighbours:
+            # url을 받아서 requset 통해 체인 정보 저장
+            node_url = "http://" + str(node.replace("0.0.0.0", "localhost")) + '/chain'
+            response = requsets.get(node_url)
+            
+            # 웹페이지와 정상적으로 교류가 되면 그 정보 저장
+            if response.status_code == 200:
+                length = response.json()['length']
+                chain = response.json()['chain']
+
+                # 다른 노드의 길이가 내 노드보다 길고 내 체인이 유효한 경우
+                if length > max_length and self.valid_chain(chain):
+                    max_length = length
+                    new_block = chain
+                # 내 노드의 데이터가 이미 최신인 경우
+                else:
+                    1 == 1
+            
+            if new_block != None:
+                self.chain = new_block
+                return True
+            
+            return False
+
 
 
 # 노드 기본 정보 설정
@@ -124,6 +170,64 @@ my_port = '5000'
 node_identifier = 'node_' + my_port
 mine_owner = 'master'
 mine_profit = 0.1
+
+
+# 다른 노드 추가
+# API 주소를 통하여 POST 방식으로 타 노드 추가 요청이 오게 될 것이다.
+# 우선 정상 노드 주소로 요청되었는지 확인한 뒤, 해당 노드가 이미 등록된 것은 아닌지 확인한다.
+# 블록체인 객체에 새로 만들어진 기능(register_node)을 작동시켜 해당 노드를 추가한다.
+@app.route('/nodes/register', methods=['POST'])
+def register_nodes():
+    # json 형태로 보내면 노드가 저장된다.
+    values = requset.get_json()
+    print("register nodes :", values)
+    
+    registering_node = values.get('nodes')
+    # 요청된 node 값이 없을 경우
+    if registering_node == None:
+        return "Error : Please supply a valid list of nodes", 400
+    
+    # 요청받은 노드가 이미 등록한 노드와 중복인지 검사한다.
+    # 중복인 경우
+    if registering_node.split("//")[1] in blockchain.nodes:
+        print("Node already registered")
+        response = {
+            'message' : 'Already Registered Node'
+            'total_nodes' : list(blockchain.nodes)
+        }
+    # 중복이 아닌 경우
+    else:
+        blockchain.register_node(registering_node)
+        
+        # 해당 노드에 내 정보 등록하기
+        headers = {'Content-Type' : 'application/json; charset = utf-8'}
+        data = {"nodes" : "http://" + my_ip + ":" + my_port}
+        print("My node info :", "http://" + my_ip + ":" + my_port)
+        requests.post(
+            registering_node + "/nodes/register",
+            headers = headers, 
+            data = json.dumps(data)
+            )
+        
+        # 이후 주변 노드들에도 새로운 노드가 등장함을 전파
+        for add_node in blockchain.nodes:
+            if add_node != registering_node.split("//")[1]:
+                print("add_node :", add_node)
+                # 노드 등록
+                headers = {'Content-Type' : 'application/json; charset = utf-8'}
+                data = {"nodes" : registering_node}
+                requests.post(
+                    "http://" + add_node + "/nodes/register",
+                    headers = headers,
+                    data = json.dumps(data)
+                    )
+        
+        response = {
+            'message' : 'New nodes have been added',
+            'total_nodes' : list(blockchain.nodes)
+        }
+    
+    return jsonify(response), 201
 
 
 # 블록 정보 호출
@@ -200,14 +304,36 @@ def mine():
     previous_hash = blockchain.hash(last_block)
     block = blockchain.new_block(proof, previous_hash)
     print("MINING FINISHED")
+
+    # 노드 연결을 위해 추가되는 부분
+    # nodes에 연결된 모든 노드에 작업 증명(PoW)이 완료되었음을 전파한다.
+    for node in blockchain.nodes:
+        headers {'Content-Type' : 'application/json; charset = utf-8'}
+        data = {
+            'miner_node' : 'http://' + my_ip + ':' + my_port,
+            'new_nonce' : blockchain.last_block['nonce']
+        }
+        
+        alarm_res = requests.get(
+            "http://" + node + "nodes/resolve",
+            headers = headers,
+            data = json.dumps(data)
+            )
+        
+        # 전파 받은 노드의 응답에 ERROR가 없을 경우 == 나의 PoW가 인정 받을 경우
+        if "ERROR" not in alarm_res.text:
+            response = {
+                'message' : 'new block completed',
+                'index' : block['index'],
+                'transactions' : block['transactions'],
+                'nonce' : block['nonce'],
+                'previous_hash' : block['previous_hash']
+            }
+        # 전파 받은 노드의 응답에 이상이 있을 경우
+        # 내 PoW가 이상이 있을 수 있으므로 다시 PoW 진행
+        else:
+            block = blockchain.new_block(proof, previous_hash)
     
-    response = {
-        'message' : 'new block found',
-        'index' : block['index'],
-        'transactions' : block['transactions'],
-        'nonce' : block['nonce'],
-        'previous_hash' : block['previous_hash']
-    }
     
     return jsonify(response), 200
 
